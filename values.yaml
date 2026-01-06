@@ -1,0 +1,81 @@
+---
+replicaCount: 2
+
+image:
+  repository: 248607199015.dkr.ecr.us-east-1.amazonaws.com/dsr
+  tag: v1
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 2021
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+pipelineConfig:
+  pipelines.yaml: |
+    network-pipeline:
+      source:
+        kafka:
+          bootstrapservers:
+            - mskdev.tgrc.cargill.com:9000
+          topics:
+            - name: dsrtestnetworkv7
+              groupid: dsrtestnetworkv7dataprepper
+            - name: dsrtestnetworkv8
+              groupid: dsrtestnetworkv8dataprepper
+          authentication:
+            sasl:
+              scram:
+                mechanism: SCRAM-SHA-512
+                username: "tgrc_consumer_dev"
+                password: "lP_R}_8uZyD}jMtP"
+          encryption:
+            type: ssl
+            insecure: true
+
+      processor:
+
+        - parsejson:
+            deletesource: true
+
+        - flatten:
+            source: ""
+            target: ""
+            removeprocessedfields: true
+
+        - aggregate:
+            identificationkeys:
+              - destination.ip
+            groupduration: "5s"
+            action:
+              countandstitch:
+                deduplicate: true
+                unflattenoutput: true
+                enrichments:
+                  - targetfield: "destination.geo.countryname"
+                    inputfield: "destination.geo.countryname"
+                    mappings:
+                      "UNITED STATES OF AMERICA":
+                        - "United States"
+                        - "UNITED STATES OF AMERICA"
+
+        - date:
+            fromtimereceived: true
+            destination: "@timestamp"
+
+      sink:
+        - opensearch:
+            hosts: ["https://opensearch-siem.tgrc.cargill.com"]
+            username: "lambda_pipeline"
+            password: "q1VmmfSkbXScEP:j"
+            index: "count-sticth-log"
+            indextype: custom
+            bulksize: 4
+            max_retries: 20

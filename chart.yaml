@@ -1,0 +1,7 @@
+---
+apiVersion: v2
+name: data-prepper
+description: Helm chart for Data Prepper
+type: application
+version: 0.1.0
+appVersion: "v1"

@@ -1,0 +1,29 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: data-prepper
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 2021
+          volumeMounts:
+            - name: pipeline-config
+              mountPath: /usr/share/data-prepper/pipelines.yaml
+              subPath: pipelines.yaml
+      volumes:
+        - name: pipeline-config
+          configMap:
+            name: {{ .Release.Name }}-config
