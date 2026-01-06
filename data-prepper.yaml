@@ -27,8 +27,8 @@ data:
             sasl:
               scram:
                 mechanism: SCRAM-SHA-512
-                username: ""
-                password: ""
+                username: "tgrc_consumer_dev"
+                password: "lP_R}_8uZyD}jMtP"
           encryption:
             type: ssl
             insecure: true
@@ -60,8 +60,8 @@ data:
       sink:
         - opensearch:
             hosts: ["https://opensearch-siem.tgrc.cargill.com"]
-            username: ""
-            password: ""
+            username: "lambda_pipeline"
+            password: "lP_R}_8uZyD}jMtP"
             index: "count-sticth-log"
             index_type: custom
             bulk_size: 4
@@ -88,7 +88,7 @@ spec:
       containers:
       - name: dataprepper
         # Replace with your ECR image URI
-        image: your-account-id.dkr.ecr.your-region.amazonaws.com/dataprepper:latest
+        image: 248607199015.dkr.ecr.us-east-1.amazonaws.com/dsr:v1
         ports:
         - containerPort: 4900
           name: metrics
