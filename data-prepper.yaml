@@ -27,8 +27,8 @@ data:
             sasl:
               scram:
                 mechanism: SCRAM-SHA-512
-                username: "tgrc_consumer_dev"
-                password: "lP_R}_8uZyD}jMtP"
+                username: ""
+                password: ""
           encryption:
             type: ssl
             insecure: true
@@ -60,8 +60,8 @@ data:
       sink:
         - opensearch:
             hosts: ["https://opensearch-siem.tgrc.cargill.com"]
-            username: "lambda_pipeline"
-            password: "lP_R}_8uZyD}jMtP"
+            username: ""
+            password: ""
             index: "count-sticth-log"
             index_type: custom
             bulk_size: 4
