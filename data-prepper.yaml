@@ -1,0 +1,151 @@
+---
+# Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: data-prepper
+---
+# ConfigMap for Data Prepper pipeline configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dataprepper-pipeline-config
+  namespace: data-prepper
+data:
+  pipeline.yaml: |
+    network-pipeline:
+      source:
+        kafka:
+          bootstrap_servers:
+            - mskdev.tgrc.cargill.com:9000
+          topics:
+            - name: dsrtestnetworkv7
+              group_id: dsrtestnetworkv7dataprepper
+            - name: dsrtestnetworkv8
+              group_id: dsrtestnetworkv8dataprepper
+          authentication:
+            sasl:
+              scram:
+                mechanism: SCRAM-SHA-512
+                username: "tgrc_consumer_dev"
+                password: "lP_R}_8uZyD}jMtP"
+          encryption:
+            type: ssl
+            insecure: true
+      processor:
+        - parse_json:
+            delete_source: true
+        - flatten:
+            source: ""
+            target: ""
+            remove_processed_fields: true
+        - aggregate:
+            identification_keys:
+              - destination.ip
+            group_duration: "5s"
+            action:
+              count_and_stitch:
+                deduplicate: true
+                unflatten_output: true
+            enrichments:
+              - target_field: "destination.geo.country_name"
+                input_field: "destination.geo.country_name"
+                mappings:
+                  "UNITED STATES OF AMERICA":
+                    - "United States"
+                    - "UNITED STATES OF AMERICA"
+        - date:
+            from_time_received: true
+            destination: "@timestamp"
+      sink:
+        - opensearch:
+            hosts: ["https://opensearch-siem.tgrc.cargill.com"]
+            username: "lambda_pipeline"
+            password: "lP_R}_8uZyD}jMtP"
+            index: "count-sticth-log"
+            index_type: custom
+            bulk_size: 4
+            max_retries: 20
+---
+# Data Prepper Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dataprepper
+  namespace: data-prepper
+  labels:
+    app: dataprepper
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: dataprepper
+  template:
+    metadata:
+      labels:
+        app: dataprepper
+    spec:
+      containers:
+      - name: dataprepper
+        # Replace with your ECR image URI
+        image: your-account-id.dkr.ecr.your-region.amazonaws.com/dataprepper:latest
+        ports:
+        - containerPort: 4900
+          name: metrics
+        - containerPort: 2200
+          name: otel
+        - containerPort: 4901
+          name: health
+        env:
+        - name: DOCKER_HOST
+          value: unix:///var/run/docker.sock
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "2000m"
+        volumeMounts:
+        - name: pipeline-config
+          mountPath: /usr/share/dataprepper/pipeline.yaml
+          subPath: pipeline.yaml
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 4901
+          initialDelaySeconds: 60
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 4901
+          initialDelaySeconds: 30
+          periodSeconds: 10
+      volumes:
+      - name: pipeline-config
+        configMap:
+          name: dataprepper-pipeline-config
+---
+# Service for monitoring/health checks
+apiVersion: v1
+kind: Service
+metadata:
+  name: dataprepper
+  namespace: data-prepper
+  labels:
+    app: dataprepper
+spec:
+  selector:
+    app: dataprepper
+  ports:
+  - name: metrics
+    port: 4900
+    targetPort: 4900
+  - name: otel
+    port: 2200
+    targetPort: 2200
+  - name: health
+    port: 4901
+    targetPort: 4901
+  clusterIP: None # Headless service for stateful access if needed
