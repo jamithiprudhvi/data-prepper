@@ -8,6 +8,11 @@ metadata:
 
 managedNodeGroups:
   - name: data-prepper-nodes
-    instanceType: ["m5.large", "c3.large", "c4.large", "c5.large"]
+    instanceTypes:  # ✅ Use PLURAL "instanceTypes" for array
+      - m5.large
+      - c5.large
+      - c4.large
     desiredCapacity: 3
+    minSize: 1
+    maxSize: 6
     spot: true
